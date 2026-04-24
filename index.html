@@ -1,0 +1,202 @@
+<!DOCTYPE html><html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Syllabus Tracker Pro</title><style>
+:root {
+  --bg:#0f172a;
+  --card:#1e293b;
+  --accent:#22c55e;
+  --text:#e2e8f0;
+  --muted:#94a3b8;
+}
+
+body {
+  margin:0;
+  font-family: 'Segoe UI', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.container {
+  max-width:900px;
+  margin:auto;
+  padding:20px;
+}
+
+h1 { text-align:center; }
+
+.card {
+  background:var(--card);
+  padding:15px;
+  border-radius:16px;
+  margin-bottom:15px;
+}
+
+button {
+  background:var(--accent);
+  border:none;
+  padding:6px 12px;
+  border-radius:8px;
+  cursor:pointer;
+  color:white;
+}
+
+.small-btn { background:#334155; }
+
+.progress {
+  background:#334155;
+  height:10px;
+  border-radius:10px;
+  overflow:hidden;
+  margin-top:10px;
+}
+
+.progress-bar { height:100%; background:var(--accent); }
+
+.input-row {
+  display:flex;
+  gap:10px;
+  margin-bottom:10px;
+}
+
+input {
+  flex:1;
+  padding:8px;
+  border-radius:8px;
+  border:none;
+}
+
+.topic {
+  display:flex;
+  justify-content:space-between;
+  padding:5px 0;
+}
+
+.fade { opacity:0.6; text-decoration:line-through; }
+
+.reset {
+  background:#ef4444;
+}
+
+</style></head><body>
+<div class="container">
+  <h1>📚 Syllabus Tracker Pro</h1>  <div class="input-row">
+    <input id="subjectInput" placeholder="Add Subject">
+    <button onclick="addSubject()">Add</button>
+    <button class="reset" onclick="resetAll()">Reset</button>
+  </div>  <div id="subjects"></div>  <h3>Overall Progress</h3>
+  <div class="progress"><div id="overallBar" class="progress-bar"></div></div>
+</div><script>
+let data = JSON.parse(localStorage.getItem("syllabus")) || [];
+
+function save(){
+  localStorage.setItem("syllabus", JSON.stringify(data));
+  render();
+}
+
+function resetAll(){
+  if(confirm("Clear all data?")){
+    localStorage.removeItem("syllabus");
+    data=[];
+    render();
+  }
+}
+
+function addSubject(){
+  let input = document.getElementById("subjectInput");
+  if(!input.value.trim()) return;
+  data.push({name:input.value, chapters:[]});
+  input.value="";
+  save();
+}
+
+function addChapter(s){
+  let name = prompt("Enter chapter name");
+  if(!name) return;
+  data[s].chapters.push({name, topics:[]});
+  save();
+}
+
+function addTopic(s,c){
+  let name = prompt("Enter topic name");
+  if(!name) return;
+  data[s].chapters[c].topics.push({name, done:false});
+  save();
+}
+
+function toggle(s,c,t){
+  data[s].chapters[c].topics[t].done ^= true;
+  save();
+}
+
+function delSubject(i){ data.splice(i,1); save(); }
+function delChapter(s,c){ data[s].chapters.splice(c,1); save(); }
+function delTopic(s,c,t){ data[s].chapters[c].topics.splice(t,1); save(); }
+
+function progress(sub){
+  let total=0, done=0;
+  sub.chapters.forEach(c=>c.topics.forEach(t=>{ total++; if(t.done) done++; }));
+  return total? (done/total)*100 : 0;
+}
+
+function overall(){
+  let total=0, done=0;
+  data.forEach(s=>s.chapters.forEach(c=>c.topics.forEach(t=>{ total++; if(t.done) done++; })));
+  return total? (done/total)*100 : 0;
+}
+
+function render(){
+  let root = document.getElementById("subjects");
+  root.innerHTML="";
+
+  data.forEach((s,si)=>{
+    let div=document.createElement("div");
+    div.className="card";
+
+    let p=progress(s);
+
+    div.innerHTML=`
+      <h2>${s.name}</h2>
+      <button onclick="addChapter(${si})">+ Chapter</button>
+      <button class="small-btn" onclick="delSubject(${si})">Delete</button>
+      <div class="progress"><div class="progress-bar" style="width:${p}%"></div></div>
+    `;
+
+    s.chapters.forEach((c,ci)=>{
+      let cdiv=document.createElement("div");
+      cdiv.className="card";
+
+      cdiv.innerHTML=`
+        <h3>${c.name}</h3>
+        <button onclick="addTopic(${si},${ci})">+ Topic</button>
+        <button class="small-btn" onclick="delChapter(${si},${ci})">Delete</button>
+      `;
+
+      c.topics.forEach((t,ti)=>{
+        let tdiv=document.createElement("div");
+        tdiv.className="topic";
+
+        tdiv.innerHTML=`
+          <label class="${t.done?"fade":""}">
+            <input type="checkbox" ${t.done?"checked":""} onchange="toggle(${si},${ci},${ti})">
+            ${t.name}
+          </label>
+          <button class="small-btn" onclick="delTopic(${si},${ci},${ti})">X</button>
+        `;
+
+        cdiv.appendChild(tdiv);
+      });
+
+      div.appendChild(cdiv);
+    });
+
+    root.appendChild(div);
+  });
+
+  document.getElementById("overallBar").style.width = overall()+"%";
+}
+
+render();
+</script></body>
+</html>
