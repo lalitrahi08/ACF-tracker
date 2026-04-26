@@ -2,152 +2,249 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Syllabus Tracker Pro</title><style>
+<title>Syllabus Tracker (Clean UI v2)</title><style>
 :root {
-  --bg:#0f172a;
-  --card:#1e293b;
-  --accent:#22c55e;
-  --text:#e2e8f0;
-  --muted:#94a3b8;
+  --bg:#f8fafc;
+  --card:#ffffff;
+  --accent:#6366f1;
+  --accent-soft:#e0e7ff;
+  --text:#1e293b;
+  --muted:#64748b;
+  --warn:#f59e0b;
 }
 
 body {
   margin:0;
   font-family: 'Segoe UI', sans-serif;
-  background: var(--bg);
-  color: var(--text);
+  background:var(--bg);
+  color:var(--text);
 }
 
 .container {
-  max-width:900px;
+  max-width:520px;
   margin:auto;
-  padding:20px;
+  padding:14px;
 }
 
-h1 { text-align:center; }
+h1 {
+  font-size:18px;
+  margin-bottom:10px;
+}
 
 .card {
   background:var(--card);
-  padding:15px;
-  border-radius:16px;
-  margin-bottom:15px;
+  padding:12px;
+  border-radius:14px;
+  margin-bottom:10px;
+  box-shadow:0 2px 8px rgba(0,0,0,0.05);
+}
+
+.row {
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
 }
 
 button {
   background:var(--accent);
   border:none;
-  padding:6px 12px;
+  padding:6px 10px;
   border-radius:8px;
-  cursor:pointer;
+  color:white;
+  font-size:12px;
+}
+
+.small-btn {
+  background:#e2e8f0;
+  color:#1e293b;
+}
+
+.warn {
+  background:var(--warn);
   color:white;
 }
 
-.small-btn { background:#334155; }
-
 .progress {
-  background:#334155;
-  height:10px;
+  background:#e2e8f0;
+  height:6px;
   border-radius:10px;
   overflow:hidden;
-  margin-top:10px;
+  margin-top:6px;
 }
 
-.progress-bar { height:100%; background:var(--accent); }
+.progress-bar {
+  height:100%;
+  background:var(--accent);
+}
 
 .input-row {
   display:flex;
-  gap:10px;
-  margin-bottom:10px;
+  gap:6px;
+  margin-bottom:8px;
 }
 
 input {
   flex:1;
-  padding:8px;
+  padding:6px;
   border-radius:8px;
-  border:none;
+  border:1px solid #e2e8f0;
+  font-size:13px;
 }
 
 .topic {
   display:flex;
   justify-content:space-between;
-  padding:5px 0;
+  font-size:13px;
+  padding:4px 0;
 }
 
-.fade { opacity:0.6; text-decoration:line-through; }
+.fade {
+  opacity:0.5;
+  text-decoration:line-through;
+}
 
-.reset {
-  background:#ef4444;
+.small {
+  font-size:11px;
+  color:var(--muted);
+}
+
+.hidden { display:none; }
+
+.revision-item {
+  padding:6px;
+  border-radius:8px;
+  margin-bottom:6px;
+  background:var(--accent-soft);
+}
+
+.revision-subject {
+  font-weight:bold;
+  font-size:12px;
+}
+
+.revision-topic {
+  font-size:13px;
 }
 
 </style></head><body>
-<div class="container">
-  <h1>📚 Syllabus Tracker Pro</h1>  <div class="input-row">
-    <input id="subjectInput" placeholder="Add Subject">
-    <button onclick="addSubject()">Add</button>
-    <button class="reset" onclick="resetAll()">Reset</button>
-  </div>  <div id="subjects"></div>  <h3>Overall Progress</h3>
+<div class="container"><h1>📊 Tracker</h1><div class="card">
+  <div class="small">Progress</div>
+  <div id="overallText">0%</div>
   <div class="progress"><div id="overallBar" class="progress-bar"></div></div>
-</div><script>
+</div><div class="card">
+  <div class="small">Today</div>
+  <div id="targetStatus"></div>
+</div><div class="card">
+  <div class="input-row">
+    <input id="targetInput" type="number" placeholder="Daily target">
+    <button onclick="setTarget()">Set</button>
+    <button class="small-btn" onclick="toggleRevisionView()">Revision</button>
+  </div>
+</div><div id="revisionPanel" class="card hidden">
+  <div class="small">Revision Queue</div>
+  <div id="revisionList"></div>
+</div><div class="card">
+  <div class="input-row">
+    <input id="subjectInput" placeholder="Add subject">
+    <button onclick="addSubject()">Add</button>
+  </div>
+</div><div id="subjects"></div></div><script>
 let data = JSON.parse(localStorage.getItem("syllabus")) || [];
+let target = localStorage.getItem("dailyTarget") || 0;
+let todayDone = JSON.parse(localStorage.getItem("todayDone")) || 0;
+let lastDate = localStorage.getItem("date") || "";
 
-function save(){
-  localStorage.setItem("syllabus", JSON.stringify(data));
+function save(){ localStorage.setItem("syllabus", JSON.stringify(data)); render(); }
+
+function setTarget(){
+  let val = document.getElementById("targetInput").value;
+  if(!val) return;
+  target = val;
+  localStorage.setItem("dailyTarget", val);
   render();
 }
 
-function resetAll(){
-  if(confirm("Clear all data?")){
-    localStorage.removeItem("syllabus");
-    data=[];
-    render();
+function checkDate(){
+  let today = new Date().toDateString();
+  if(today !== lastDate){
+    todayDone = 0;
+    localStorage.setItem("todayDone", 0);
+    localStorage.setItem("date", today);
   }
 }
 
+function toggleRevisionView(){
+  document.getElementById("revisionPanel").classList.toggle("hidden");
+}
+
 function addSubject(){
-  let input = document.getElementById("subjectInput");
+  let input=document.getElementById("subjectInput");
   if(!input.value.trim()) return;
   data.push({name:input.value, chapters:[]});
   input.value="";
   save();
 }
 
-function addChapter(s){
-  let name = prompt("Enter chapter name");
-  if(!name) return;
-  data[s].chapters.push({name, topics:[]});
-  save();
-}
-
-function addTopic(s,c){
-  let name = prompt("Enter topic name");
-  if(!name) return;
-  data[s].chapters[c].topics.push({name, done:false});
-  save();
-}
+function addChapter(s){ let n=prompt("Chapter"); if(!n) return; data[s].chapters.push({name:n,topics:[]}); save(); }
+function addTopic(s,c){ let n=prompt("Topic"); if(!n) return; data[s].chapters[c].topics.push({name:n,done:false,rev:false}); save(); }
 
 function toggle(s,c,t){
-  data[s].chapters[c].topics[t].done ^= true;
+  let topic=data[s].chapters[c].topics[t];
+  topic.done=!topic.done;
+  if(topic.done) todayDone++; else todayDone--;
+  localStorage.setItem("todayDone", todayDone);
   save();
 }
 
-function delSubject(i){ data.splice(i,1); save(); }
-function delChapter(s,c){ data[s].chapters.splice(c,1); save(); }
-function delTopic(s,c,t){ data[s].chapters[c].topics.splice(t,1); save(); }
+function toggleRev(s,c,t){
+  data[s].chapters[c].topics[t].rev ^= true;
+  save();
+}
 
 function progress(sub){
-  let total=0, done=0;
-  sub.chapters.forEach(c=>c.topics.forEach(t=>{ total++; if(t.done) done++; }));
-  return total? (done/total)*100 : 0;
+  let total=0,done=0;
+  sub.chapters.forEach(c=>c.topics.forEach(t=>{total++; if(t.done) done++;}));
+  return total?Math.round((done/total)*100):0;
 }
 
 function overall(){
-  let total=0, done=0;
-  data.forEach(s=>s.chapters.forEach(c=>c.topics.forEach(t=>{ total++; if(t.done) done++; })));
-  return total? (done/total)*100 : 0;
+  let total=0,done=0;
+  data.forEach(s=>s.chapters.forEach(c=>c.topics.forEach(t=>{total++; if(t.done) done++;})));
+  return total?Math.round((done/total)*100):0;
+}
+
+function renderRevision(){
+  let list=document.getElementById("revisionList");
+  list.innerHTML="";
+
+  data.forEach(s=>{
+    s.chapters.forEach(c=>{
+      c.topics.forEach(t=>{
+        if(t.rev){
+          let div=document.createElement("div");
+          div.className="revision-item";
+          div.innerHTML=`
+            <div class="revision-subject">${s.name} • ${c.name}</div>
+            <div class="revision-topic">${t.name}</div>
+          `;
+          list.appendChild(div);
+        }
+      });
+    });
+  });
 }
 
 function render(){
-  let root = document.getElementById("subjects");
+  checkDate();
+
+  let ov=overall();
+  document.getElementById("overallText").innerText=ov+"%";
+  document.getElementById("overallBar").style.width=ov+"%";
+  document.getElementById("targetStatus").innerText=`${todayDone}/${target}`;
+
+  renderRevision();
+
+  let root=document.getElementById("subjects");
   root.innerHTML="";
 
   data.forEach((s,si)=>{
@@ -157,20 +254,22 @@ function render(){
     let p=progress(s);
 
     div.innerHTML=`
-      <h2>${s.name}</h2>
-      <button onclick="addChapter(${si})">+ Chapter</button>
-      <button class="small-btn" onclick="delSubject(${si})">Delete</button>
+      <div class="row">
+        <strong>${s.name}</strong>
+        <button onclick="addChapter(${si})">+</button>
+      </div>
       <div class="progress"><div class="progress-bar" style="width:${p}%"></div></div>
     `;
 
     s.chapters.forEach((c,ci)=>{
       let cdiv=document.createElement("div");
-      cdiv.className="card";
+      cdiv.style.marginTop="6px";
 
       cdiv.innerHTML=`
-        <h3>${c.name}</h3>
-        <button onclick="addTopic(${si},${ci})">+ Topic</button>
-        <button class="small-btn" onclick="delChapter(${si},${ci})">Delete</button>
+        <div class="row small">
+          ${c.name}
+          <button class="small-btn" onclick="addTopic(${si},${ci})">+</button>
+        </div>
       `;
 
       c.topics.forEach((t,ti)=>{
@@ -182,7 +281,7 @@ function render(){
             <input type="checkbox" ${t.done?"checked":""} onchange="toggle(${si},${ci},${ti})">
             ${t.name}
           </label>
-          <button class="small-btn" onclick="delTopic(${si},${ci},${ti})">X</button>
+          <button class="small-btn ${t.rev?"warn":""}" onclick="toggleRev(${si},${ci},${ti})">R</button>
         `;
 
         cdiv.appendChild(tdiv);
@@ -193,8 +292,6 @@ function render(){
 
     root.appendChild(div);
   });
-
-  document.getElementById("overallBar").style.width = overall()+"%";
 }
 
 render();
